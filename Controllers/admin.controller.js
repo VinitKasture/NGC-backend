@@ -128,7 +128,7 @@ const getAllClients = async (req, res, next) => {
     next(error);
   }
 };
-
+//1212
 const addInstallment = async (req, res, next) => {
   try {
     const { amount, clientId, date } = req.body;
