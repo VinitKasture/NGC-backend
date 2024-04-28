@@ -3,10 +3,10 @@ const bcrypt = require("bcrypt");
 // Models
 const Admin = require("../Models/Admin");
 const Course = require("../Models/Course");
+const Client = require("../Models/Client");
 
 // Middlewares
 const { createToken } = require("../middleware/jwt");
-const Client = require("../Models/Client");
 
 const login = async function (req, res, next) {
   try {
@@ -128,7 +128,7 @@ const getAllClients = async (req, res, next) => {
     next(error);
   }
 };
-//1212
+
 const addInstallment = async (req, res, next) => {
   try {
     const { amount, clientId, date } = req.body;
@@ -152,6 +152,88 @@ const addInstallment = async (req, res, next) => {
   }
 };
 
+const getClientsCountByCourses = async (req, res, next) => {
+  try {
+    const enrolledStudents = await Course.aggregate([
+      {
+        $lookup: {
+          from: "clients",
+          localField: "_id",
+          foreignField: "courseId",
+          as: "clients",
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          courseName: "$name",
+          clients: "$clients.name",
+          feesPaid: "$clients.feesPaid",
+        },
+      },
+    ]);
+
+    res.status(200).json({ enrolledStudents });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getPopularCourses = async (req, res, next) => {
+  try {
+    const courses = await Course.aggregate([
+      {
+        $lookup: {
+          from: "clients",
+          localField: "_id",
+          foreignField: "courseId",
+          as: "clients",
+        },
+      },
+      {
+        $match: {
+          "clients.status": false,
+        },
+      },
+      {
+        $group: {
+          _id: "$name",
+          clients: { $push: "$clients.name" },
+        },
+      },
+    ]);
+
+    res.status(200).json({ courses });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateCourseStatus = async (req, res, next) => {
+  try {
+    const { clientId, status } = req.body;
+
+    const client = await Client.findByIdAndUpdate(
+      { _id: clientId },
+      { status: status }
+    );
+
+    res.status(200).json({ client, message: "Course status updated!" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getRevenueDetails = async (req, res, next) => {
+  try {
+    const revenueDetails = await Client.distinct("feesPaid");
+
+    res.status(200).json({ revenueDetails, message: "Course status updated!" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   login,
   signup,
@@ -160,4 +242,8 @@ module.exports = {
   getAllCourses,
   getAllClients,
   addInstallment,
+  getClientsCountByCourses,
+  getPopularCourses,
+  updateCourseStatus,
+  getRevenueDetails,
 };
